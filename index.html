@@ -43,7 +43,7 @@ thead th.cat { background: #16213e; }
 #stickyHead .head-inner { transform: translateX(calc(-1 * var(--stk-sc, 0px))); }
 #stickyHead table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 #stickyHead thead th { position: static; overflow: hidden; text-overflow: ellipsis; }
-#stickyHead thead th.sticky, #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-4 { transform: translateX(var(--stk-sc, 0px)); }
+#stickyHead thead th.sticky, #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-4 { transform: translateX(calc(var(--stk-sc, 0px) + var(--sticky-offset, 0px))); }
 
 /* 横向滚动条美化 */
 .chips-scroll::-webkit-scrollbar { height: 4px; }
@@ -136,6 +136,10 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   td.sticky-2, th.sticky-2 { width: 70px; min-width: 70px; max-width: 70px; }
   td.sticky-3, th.sticky-3 { width: 130px; min-width: 130px; max-width: 130px; }
   td.sticky-4, th.sticky-4 { width: 76px; min-width: 76px; max-width: 76px; }
+  /* 手机端：只固定第1列（一级分类）；第4列（ETF代码）滚动到第1列右缘才开始固定；第2、3列不固定 */
+  td.sticky-2, th.sticky-2, td.sticky-3, th.sticky-3 { position: static !important; left: auto !important; }
+  td.sticky-4, th.sticky-4 { left: 42px; }
+  #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3 { transform: none !important; }
   .pe-bar .bar { width: 28px; }
   .pe-bar .val { font-size: 10px; min-width: 26px; }
   .footer { padding: 12px 14px; font-size: 10px; }
@@ -186,7 +190,7 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
 
 <div class="cat2-chips">
   <div class="chips-scroll" id="cat2Chips"></div>
-  <button class="chips-toggle" id="chipsToggle" onclick="toggleChips()">全部 ▾</button>
+  <button class="chips-toggle" id="chipsToggle" onclick="toggleChips()">展开 ▾</button>
 </div>
 
 <div class="table-wrap">
@@ -1964,7 +1968,8 @@ var curCat1 = '全部';
 var curCat2 = '全部';
 var allRows = [];
 
-// 按实际列宽动态计算 sticky 四列的 left 偏移，保证任意分类/筛选/排序/窗口尺寸下精确对齐
+// 按实际列宽动态计算 sticky 列的 left 偏移，保证任意分类/筛选/排序/窗口尺寸下精确对齐
+// 桌面端：固定最左四列；手机端(<=768px)：只固定第1列，第4列(ETF代码)滚动到第1列右缘才开始固定，第2、3列不固定
 function fixStickyOffsets() {
   var headRow = document.querySelector('#mainTable thead tr');
   if (!headRow) return;
@@ -1972,15 +1977,30 @@ function fixStickyOffsets() {
   var header = document.querySelector('.header');
   var controls = document.querySelector('.controls');
   if (controls && header) controls.style.top = header.offsetHeight + 'px';
+  var isMobile = window.innerWidth <= 768;
   var stickyCols = headRow.querySelectorAll('th.sticky, th.sticky-2, th.sticky-3, th.sticky-4');
-  var left = 0;
+  var left = 0, w1 = 0;
   for (var i = 0; i < stickyCols.length; i++) {
     var th = stickyCols[i];
     var w = th.offsetWidth;
-    th.style.left = left + 'px';
     var cls = (th.className.match(/sticky(-\d+)?/) || ['sticky'])[0];
     var tds = document.querySelectorAll('#tbody td.' + cls);
-    for (var j = 0; j < tds.length; j++) tds[j].style.left = left + 'px';
+    if (isMobile && (i === 1 || i === 2)) {
+      // 手机端：第2、3列不固定，跟随表格滚动
+      th.style.position = 'static'; th.style.left = '';
+      for (var j = 0; j < tds.length; j++) { tds[j].style.position = 'static'; tds[j].style.left = ''; }
+      continue;
+    }
+    if (i === 0) w1 = w;
+    // 手机端第4列：left = 第1列宽度，滚动到该位置才开始固定（CSS sticky 天然行为）
+    var L = (isMobile && i === 3) ? w1 : left;
+    th.style.position = '';
+    th.style.left = L + 'px';
+    // 克隆表头用 transform 模拟 sticky，需要按"目标位置"与"自然位置"的差值单独补偿
+    // 桌面端通常 L == offsetLeft，offset=0；手机端第4列 L=w1 < offsetLeft，需要负偏移
+    var N = th.offsetLeft;
+    th.style.setProperty('--sticky-offset', (L - N) + 'px');
+    for (var j = 0; j < tds.length; j++) { tds[j].style.position = ''; tds[j].style.left = L + 'px'; }
     left += w;
   }
   syncStickyHead();
@@ -2043,7 +2063,7 @@ function updateCat2Chips() {
   var bar = document.querySelector('.cat2-chips');
   var btn = document.getElementById('chipsToggle');
   if (bar) bar.classList.remove('expanded');
-  if (btn) btn.textContent = '全部 ▾';
+  if (btn) btn.textContent = '展开 ▾';
 }
 
 function toggleChips() {
@@ -2051,7 +2071,7 @@ function toggleChips() {
   var btn = document.getElementById('chipsToggle');
   if (!bar || !btn) return;
   var expanded = bar.classList.toggle('expanded');
-  btn.textContent = expanded ? '收起 ▲' : '全部 ▾';
+  btn.textContent = expanded ? '收起 ▲' : '展开 ▾';
 }
 
 function filterCat1(cat) {
