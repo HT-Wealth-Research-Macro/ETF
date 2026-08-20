@@ -6,10 +6,10 @@
 <title>华泰财富研究·大类资产 — ETF一览</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; }
-body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; background: #f5f6fa; color: #2d3436; font-size: 13px; display: flex; flex-direction: column; overflow: hidden; }
+html, body { min-height: 100%; }
+body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; background: #f5f6fa; color: #2d3436; font-size: 13px; }
 
-.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 20px 30px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.3); flex-shrink: 0; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 20px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
 .header .brand { font-size: 11px; letter-spacing: 3px; color: #7a7aa0; text-transform: uppercase; margin-bottom: 4px; }
 .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
 .header h1 .sep { color: #0f3460; margin: 0 2px; }
@@ -25,18 +25,45 @@ body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; ba
 .summary-card .label { font-size: 13px; font-weight: 600; color: #555; transition: color 0.18s; }
 .summary-card .count { font-size: 18px; font-weight: 700; color: #0f3460; }
 
-.controls { display: flex; gap: 12px; padding: 12px 30px; background: #fff; border-bottom: 1px solid #e0e0e0; align-items: center; flex-wrap: wrap; position: sticky; top: 72px; z-index: 99; flex-shrink: 0; }
+.controls { display: flex; gap: 12px; padding: 12px 30px; background: #fff; border-bottom: 1px solid #e0e0e0; align-items: center; flex-wrap: wrap; position: sticky; z-index: 99; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 .search-box { flex: 1; min-width: 200px; padding: 8px 14px; border: 1px solid #d0d0e0; border-radius: 6px; font-size: 13px; outline: none; }
 .search-box:focus { border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,0.1); }
 .sort-select { padding: 8px 12px; border: 1px solid #d0d0e0; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; outline: none; }
 .result-count { font-size: 12px; color: #888; white-space: nowrap; }
 
-.table-wrap { flex: 1 1 auto; min-height: 240px; overflow: auto; margin: 0; }
+.table-wrap { margin: 0; overflow-x: auto; overflow-y: hidden; width: 100%; }
 table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: max-content; }
 thead th { position: sticky; top: 0; z-index: 10; background: #1a1a2e; color: #fff; font-weight: 600; padding: 6px 8px; text-align: center; white-space: nowrap; border: none; }
 thead tr:nth-child(2) th { top: 28px; z-index: 11; }
 thead th.group { background: #0f3460; }
 thead th.cat { background: #16213e; }
+
+/* 固定表头（JS 克隆，随表格横向滚动同步） */
+#stickyHead { position: fixed; top: 0; left: 0; z-index: 30; display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+#stickyHead .head-inner { transform: translateX(calc(-1 * var(--stk-sc, 0px))); }
+#stickyHead table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+#stickyHead thead th { position: static; overflow: hidden; text-overflow: ellipsis; }
+#stickyHead thead th.sticky, #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-4 { transform: translateX(var(--stk-sc, 0px)); }
+
+/* 横向滚动条美化 */
+.chips-scroll::-webkit-scrollbar { height: 4px; }
+.chips-scroll::-webkit-scrollbar-thumb { background: #c0c0d0; border-radius: 2px; }
+.table-wrap::-webkit-scrollbar { height: 10px; }
+.table-wrap::-webkit-scrollbar-thumb { background: #c8c8d8; border-radius: 5px; }
+.table-wrap::-webkit-scrollbar-track { background: #f0f0f5; }
+
+/* 底部常驻横向滚动条（表格在视口内、原生滚动条不可见时显示，与表格双向同步） */
+.sticky-scrollbar { position: fixed; left: 0; right: 0; bottom: 0; height: 14px; overflow-x: auto; overflow-y: hidden; z-index: 60; display: none; background: #eaeaef; border-top: 1px solid #c8c8d8; scrollbar-width: thin; scrollbar-color: #0f3460 #e8e8f0; }
+.sticky-scrollbar-inner { height: 1px; width: 0; }
+.sticky-scrollbar::-webkit-scrollbar { height: 12px; }
+.sticky-scrollbar::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 6px; }
+.sticky-scrollbar::-webkit-scrollbar-thumb:hover { background: #16213e; }
+.sticky-scrollbar::-webkit-scrollbar-track { background: #e8e8f0; }
+
+/* 返回顶部浮动按钮 */
+.back-top { position: fixed; right: 20px; bottom: 24px; width: 40px; height: 40px; border-radius: 50%; background: #0f3460; color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 20px; z-index: 70; box-shadow: 0 2px 8px rgba(0,0,0,0.25); transition: background 0.18s, transform 0.18s, opacity 0.18s; line-height: 1; }
+.back-top:hover { background: #16213e; transform: translateY(-2px); }
+.back-top:active { transform: translateY(0); }
 
 tbody td { padding: 5px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid #e8e8f0; border-right: 1px solid #f0f0f5; }
 tbody td.text-l { text-align: left; }
@@ -73,8 +100,12 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
 
 .footer { padding: 16px 30px; text-align: center; color: #888; font-size: 11px; background: #1a1a2e; color: #a0a0c0; flex-shrink: 0; }
 
-.cat2-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 30px; background: #fff; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; }
-.chip { padding: 3px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; background: #f0f0f5; color: #666; transition: all 0.15s; border: 1px solid transparent; }
+.cat2-chips { display: flex; gap: 6px; align-items: center; padding: 8px 30px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+.chips-scroll { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; flex: 1 1 auto; min-width: 0; scrollbar-width: thin; scrollbar-color: #c0c0d0 transparent; }
+.cat2-chips.expanded .chips-scroll { flex-wrap: wrap; overflow: visible; }
+.chips-toggle { flex-shrink: 0; margin-left: 12px; padding: 4px 14px; border: none; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; background: #0f3460; color: #fff; white-space: nowrap; }
+.chips-toggle:hover { background: #16213e; }
+.chip { padding: 3px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; background: #f0f0f5; color: #666; transition: all 0.15s; border: 1px solid transparent; flex-shrink: 0; }
 .chip:hover { background: #e0e0f0; }
 .chip.active { background: #0f3460; color: #fff; }
 
@@ -108,6 +139,7 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   .pe-bar .bar { width: 28px; }
   .pe-bar .val { font-size: 10px; min-width: 26px; }
   .footer { padding: 12px 14px; font-size: 10px; }
+  .back-top { width: 36px; height: 36px; font-size: 18px; bottom: 22px; right: 14px; }
 }
 </style>
 </head>
@@ -152,7 +184,10 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   <span class="result-count" id="resultCount">共 1707 只</span>
 </div>
 
-<div class="cat2-chips" id="cat2Chips"></div>
+<div class="cat2-chips">
+  <div class="chips-scroll" id="cat2Chips"></div>
+  <button class="chips-toggle" id="chipsToggle" onclick="toggleChips()">全部 ▾</button>
+</div>
 
 <div class="table-wrap">
   <table id="mainTable">
@@ -1912,6 +1947,12 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   </table>
 </div>
 
+<div id="stickyHead"><div class="head-inner"><table></table></div></div>
+
+<div class="sticky-scrollbar" id="stickyScrollbar"><div class="sticky-scrollbar-inner" id="stickyScrollbarInner"></div></div>
+
+<button class="back-top" id="backTop" title="返回顶部" onclick="window.scrollTo({top:0,behavior:'smooth'});">↑</button>
+
 <div class="footer">
   华泰证券 · 财富研究大类资产团队 &nbsp;|&nbsp; 涨跌幅红色为涨/绿色为跌（A股惯例） &nbsp;|&nbsp; 业绩表现为区间复权单位净值增长率（超合理范围异常值显示—） &nbsp;|&nbsp; 指数PE分位数基于2021年以来 &nbsp;|&nbsp; 债券/QDII/互认基金无PE估值数据
   <a href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;" style="color:#a0a0c0;margin-left:12px;text-decoration:none;">↑ 返回顶部</a>
@@ -1927,13 +1968,10 @@ var allRows = [];
 function fixStickyOffsets() {
   var headRow = document.querySelector('#mainTable thead tr');
   if (!headRow) return;
-  // 双行表头：第二行 top 动态取第一行实际高度，避免滚动时两行间露白缝
-  var secondRow = document.querySelector('#mainTable thead tr:nth-child(2)');
-  if (secondRow) {
-    var h = headRow.offsetHeight;
-    var ths = secondRow.querySelectorAll('th');
-    for (var k = 0; k < ths.length; k++) ths[k].style.top = h + 'px';
-  }
+  // controls 吸顶位置 = header 实际高度（动态）
+  var header = document.querySelector('.header');
+  var controls = document.querySelector('.controls');
+  if (controls && header) controls.style.top = header.offsetHeight + 'px';
   var stickyCols = headRow.querySelectorAll('th.sticky, th.sticky-2, th.sticky-3, th.sticky-4');
   var left = 0;
   for (var i = 0; i < stickyCols.length; i++) {
@@ -1944,6 +1982,45 @@ function fixStickyOffsets() {
     var tds = document.querySelectorAll('#tbody td.' + cls);
     for (var j = 0; j < tds.length; j++) tds[j].style.left = left + 'px';
     left += w;
+  }
+  syncStickyHead();
+  updStickyHead();
+}
+
+// 克隆主表头到 fixed 容器（用 colgroup 逐列声明宽度，table-layout:fixed 下 col 优先，避免 colspan 均分错位）
+function syncStickyHead() {
+  var thead = document.querySelector('#mainTable thead');
+  var headBox = document.getElementById('stickyHead');
+  if (!thead || !headBox) return;
+  var stTable = headBox.querySelector('table');
+  var rows = thead.querySelectorAll('tr');
+  if (rows.length < 2) return;
+  var src1 = rows[0].querySelectorAll('th');
+  var src2 = rows[1].querySelectorAll('th');
+  // 全量列宽：前 4 个 rowspan sticky 列（第一行）+ 其余普通列（第二行）
+  var colWidths = [];
+  for (var i = 0; i < src1.length && src1[i].rowSpan > 1; i++) colWidths.push(src1[i].offsetWidth);
+  for (var j = 0; j < src2.length; j++) colWidths.push(src2[j].offsetWidth);
+  var colsHtml = '';
+  for (var k = 0; k < colWidths.length; k++) colsHtml += '<col style="width:' + colWidths[k] + 'px">';
+  stTable.innerHTML = '<colgroup>' + colsHtml + '</colgroup><thead>' + thead.innerHTML + '</thead>';
+  stTable.style.width = document.getElementById('mainTable').offsetWidth + 'px';
+}
+
+// 固定表头显隐 + 横向滚动同步（--stk-sc 变量驱动四列反向补偿）
+function updStickyHead() {
+  var headBox = document.getElementById('stickyHead');
+  var wrap = document.querySelector('.table-wrap');
+  var header = document.querySelector('.header');
+  var controls = document.querySelector('.controls');
+  if (!headBox || !wrap) return;
+  var topBase = (header ? header.offsetHeight : 0) + (controls ? controls.offsetHeight : 0);
+  headBox.style.top = topBase + 'px';
+  if (wrap.getBoundingClientRect().top < topBase) {
+    headBox.style.display = 'block';
+    document.documentElement.style.setProperty('--stk-sc', wrap.scrollLeft + 'px');
+  } else {
+    headBox.style.display = 'none';
   }
 }
 
@@ -1962,6 +2039,19 @@ function updateCat2Chips() {
   }
   chips.innerHTML = html;
   curCat2 = '全部';
+  // 切换分类后重置为收起状态
+  var bar = document.querySelector('.cat2-chips');
+  var btn = document.getElementById('chipsToggle');
+  if (bar) bar.classList.remove('expanded');
+  if (btn) btn.textContent = '全部 ▾';
+}
+
+function toggleChips() {
+  var bar = document.querySelector('.cat2-chips');
+  var btn = document.getElementById('chipsToggle');
+  if (!bar || !btn) return;
+  var expanded = bar.classList.toggle('expanded');
+  btn.textContent = expanded ? '收起 ▲' : '全部 ▾';
 }
 
 function filterCat1(cat) {
@@ -2051,6 +2141,65 @@ doFilter();
 fixStickyOffsets();
 window.addEventListener('load', fixStickyOffsets);
 window.addEventListener('resize', fixStickyOffsets);
+window.addEventListener('scroll', updStickyHead, {passive:true});
+(function() {
+  var _wrap = document.querySelector('.table-wrap');
+  if (_wrap) _wrap.addEventListener('scroll', updStickyHead, {passive:true});
+})();
+
+// ═══════ 底部常驻横向滚动条（视口内固定，与表格双向同步） ═══════
+(function() {
+  var wrap = document.querySelector('.table-wrap');
+  var bar = document.getElementById('stickyScrollbar');
+  var inner = document.getElementById('stickyScrollbarInner');
+  if (!wrap || !bar || !inner) return;
+
+  function hasOverflow() { return wrap.scrollWidth - wrap.clientWidth > 2; }
+
+  function syncInnerWidth() { inner.style.width = wrap.scrollWidth + 'px'; }
+
+  function updateVisibility() {
+    if (!hasOverflow()) { bar.style.display = 'none'; return; }
+    var rect = wrap.getBoundingClientRect();
+    var vh = window.innerHeight;
+    // 表格在视口内 且 原生滚动条（底部）不可见时才显示常驻滚动条
+    if (rect.top < vh && rect.bottom > vh) {
+      bar.style.display = 'block';
+      syncInnerWidth();
+      bar.scrollLeft = wrap.scrollLeft;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  // 常驻滚动条 → 表格
+  bar.addEventListener('scroll', function() { wrap.scrollLeft = bar.scrollLeft; }, { passive: true });
+  // 表格 → 常驻滚动条
+  wrap.addEventListener('scroll', function() { if (bar.style.display === 'block') bar.scrollLeft = wrap.scrollLeft; }, { passive: true });
+
+  window.addEventListener('scroll', updateVisibility, { passive: true });
+  window.addEventListener('resize', function() { syncInnerWidth(); updateVisibility(); });
+
+  // 过滤/排序后重算（列宽固定，宽度一般不变，但稳妥起见刷新可见性）
+  var _origFilter = window.doFilter;
+  if (typeof _origFilter === 'function') {
+    window.doFilter = function() { _origFilter.apply(this, arguments); syncInnerWidth(); updateVisibility(); };
+  }
+
+  window.addEventListener('load', function() { syncInnerWidth(); updateVisibility(); });
+  syncInnerWidth();
+  updateVisibility();
+})();
+
+// ═══════ 返回顶部浮动按钮（滚动超过 300px 显示） ═══════
+(function() {
+  var btn = document.getElementById('backTop');
+  if (!btn) return;
+  function update() { btn.style.display = (window.scrollY > 300) ? 'flex' : 'none'; }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
 </script>
 
 </body>
