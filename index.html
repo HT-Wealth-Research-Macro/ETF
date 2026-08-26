@@ -146,6 +146,13 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   .pe-bar .val { font-size: 10px; min-width: 26px; }
   .footer { padding: 12px 14px; font-size: 10px; }
   .back-top { width: 36px; height: 36px; font-size: 18px; bottom: 22px; right: 14px; }
+  /* 手机端常驻底部横向滚动条：加高+粗 thumb 便于触摸拖动 */
+  .sticky-scrollbar { height: 18px; background: #c8c8d8; }
+  .sticky-scrollbar::-webkit-scrollbar { height: 16px; }
+  .sticky-scrollbar::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 8px; }
+  .sticky-scrollbar::-webkit-scrollbar-track { background: #c0c0d0; }
+  /* 避免最底部 footer 被常驻滚动条遮挡 */
+  .footer { padding-bottom: 30px; }
 }
 </style>
 </head>
@@ -2186,6 +2193,13 @@ window.addEventListener('scroll', updStickyHead, {passive:true});
   function syncInnerWidth() { inner.style.width = wrap.scrollWidth + 'px'; }
   function updateVisibility() {
     if (!hasOverflow()) { bar.style.display = 'none'; return; }
+    // 手机端（≤768px）：表格横向溢出时始终在屏幕底部常驻显示横向滚动条，便于触摸拖动
+    if (window.innerWidth <= 768) {
+      bar.style.display = 'block';
+      syncInnerWidth();
+      bar.scrollLeft = wrap.scrollLeft;
+      return;
+    }
     var rect = wrap.getBoundingClientRect();
     var vh = window.innerHeight;
     // 表格在视口内 且 原生滚动条（底部）不可见时才显示常驻滚动条
