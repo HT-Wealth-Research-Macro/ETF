@@ -43,7 +43,8 @@ thead th.cat { background: #16213e; }
 #stickyHead .head-inner { transform: translateX(calc(-1 * var(--stk-sc, 0px))); }
 #stickyHead table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 #stickyHead thead th { position: static; overflow: hidden; text-overflow: ellipsis; }
-#stickyHead thead th.sticky, #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-5, #stickyHead thead th.sticky-4 { transform: translateX(var(--stk-sc, 0px)); }
+#stickyHead thead th.sticky, #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-5 { transform: translateX(var(--stk-sc, 0px)); }
+#stickyHead thead th.sticky-4 { transform: translateX(var(--stk-sc4, var(--stk-sc, 0px))); }
 
 /* 横向滚动条美化 */
 .chips-scroll::-webkit-scrollbar { height: 4px; }
@@ -134,15 +135,22 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
   thead th { padding: 4px 6px; }
   thead tr:nth-child(2) th { top: 23px; }
   tbody td { padding: 4px 6px; }
-  td.sticky, th.sticky { width: 42px; min-width: 42px; max-width: 42px; }
+  td.sticky, th.sticky { width: 42px; min-width: 42px; max-width: 42px; left: 0; }
   td.sticky-2, th.sticky-2 { width: 70px; min-width: 70px; max-width: 70px; }
   td.sticky-3, th.sticky-3 { width: 130px; min-width: 130px; max-width: 130px; }
   td.sticky-4, th.sticky-4 { width: 76px; min-width: 76px; max-width: 76px; }
-  /* 手机端隐藏跟踪指数列：5个固定列(42+70+130+90+76)超过手机视口宽度 */
+  /* 手机端：一级列常驻固定(left:0)；二级/三级/跟踪指数随内容横向滚动 */
+  td.sticky-2, th.sticky-2, td.sticky-3, th.sticky-3 { position: static; left: auto; box-shadow: none; }
+  /* 手机端隐藏跟踪指数列 */
   th.sticky-5, td.sticky-5 { display: none; }
+  /* 第四列(ETF代码)：CSS sticky 天然仅在向右滚动到贴近第一列时才吸附固定，未到阈值前随内容滚动 */
+  td.sticky-4, th.sticky-4 { position: sticky; left: 42px; }
+  /* 克隆吸顶表头与主页同步：手机端仅第一列与第四列吸附，其余随内容滚动 */
+  #stickyHead thead th.sticky-2, #stickyHead thead th.sticky-3, #stickyHead thead th.sticky-5 { transform: none; }
+  #stickyHead thead th.sticky-5 { display: none; }
   .pe-bar .bar { width: 28px; }
   .pe-bar .val { font-size: 10px; min-width: 26px; }
-  .footer { padding: 12px 14px; font-size: 10px; }
+  .footer { padding: 12px 14px 30px; font-size: 10px; }
   .back-top { width: 36px; height: 36px; font-size: 18px; bottom: 22px; right: 14px; }
 }
 </style>
@@ -1977,13 +1985,23 @@ function fixStickyOffsets() {
   var header = document.querySelector('.header');
   var controls = document.querySelector('.controls');
   if (controls && header) controls.style.top = header.offsetHeight + 'px';
+  var isMobile = window.innerWidth <= 768;
   var stickyCols = headRow.querySelectorAll('th.sticky, th.sticky-2, th.sticky-3, th.sticky-5, th.sticky-4');
   var left = 0;
   for (var i = 0; i < stickyCols.length; i++) {
     var th = stickyCols[i];
-    var w = th.offsetWidth;
-    th.style.left = left + 'px';
     var cls = (th.className.match(/sticky(-\d+)?/) || ['sticky'])[0];
+    var w = th.offsetWidth;
+    // 手机端：二级/三级/跟踪指数列随内容滚动，不固定（清除内联 left，交由 CSS position:static）
+    if (isMobile && (cls === 'sticky-2' || cls === 'sticky-3' || cls === 'sticky-5')) {
+      th.style.left = '';
+      var tdsS = document.querySelectorAll('#tbody td.' + cls);
+      for (var k = 0; k < tdsS.length; k++) tdsS[k].style.left = '';
+      continue;
+    }
+    // 手机端：ETF代码列固定在「第一列右侧」(left=第一列宽)，其吸附仅由 CSS sticky 在滚动到位时生效
+    if (isMobile && cls === 'sticky-4') left = 42;
+    th.style.left = left + 'px';
     var tds = document.querySelectorAll('#tbody td.' + cls);
     for (var j = 0; j < tds.length; j++) tds[j].style.left = left + 'px';
     left += w;
@@ -2021,9 +2039,14 @@ function updStickyHead() {
   if (!headBox || !wrap) return;
   var topBase = (header ? header.offsetHeight : 0) + (controls ? controls.offsetHeight : 0);
   headBox.style.top = topBase + 'px';
+  var sl = wrap.scrollLeft;
+  // 第四列(ETF代码)在手机端的吸附补偿：仅在向右滚动超过「前几列宽度之和」后才生效，
+  // 与主页 CSS sticky 行为一致；桌面端等同于整列滚动补偿
+  var stk4 = (window.innerWidth <= 768) ? Math.max(0, sl - 200) : sl;
+  document.documentElement.style.setProperty('--stk-sc4', stk4 + 'px');
   if (wrap.getBoundingClientRect().top < topBase) {
     headBox.style.display = 'block';
-    document.documentElement.style.setProperty('--stk-sc', wrap.scrollLeft + 'px');
+    document.documentElement.style.setProperty('--stk-sc', sl + 'px');
   } else {
     headBox.style.display = 'none';
   }
@@ -2163,9 +2186,16 @@ window.addEventListener('scroll', updStickyHead, {passive:true});
   function syncInnerWidth() { inner.style.width = wrap.scrollWidth + 'px'; }
   function updateVisibility() {
     if (!hasOverflow()) { bar.style.display = 'none'; return; }
+    // 手机端：底部横向滚动条长期常驻显示（与表格双向同步）
+    if (window.innerWidth <= 768) {
+      bar.style.display = 'block';
+      syncInnerWidth();
+      bar.scrollLeft = wrap.scrollLeft;
+      return;
+    }
     var rect = wrap.getBoundingClientRect();
     var vh = window.innerHeight;
-    // 表格在视口内 且 原生滚动条（底部）不可见时才显示常驻滚动条
+    // 桌面端：表格在视口内 且 原生滚动条（底部）不可见时才显示常驻滚动条
     if (rect.top < vh && rect.bottom > vh) {
       bar.style.display = 'block';
       syncInnerWidth();
