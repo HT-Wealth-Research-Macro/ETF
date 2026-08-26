@@ -31,7 +31,7 @@ body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; ba
 .sort-select { padding: 8px 12px; border: 1px solid #d0d0e0; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; outline: none; }
 .result-count { font-size: 12px; color: #888; white-space: nowrap; }
 
-.table-wrap { margin: 0; overflow-x: auto; overflow-y: hidden; width: 100%; }
+.table-wrap { margin: 0; overflow-x: auto; overflow-y: hidden; width: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: max-content; }
 thead th { position: sticky; top: 0; z-index: 10; background: #1a1a2e; color: #fff; font-weight: 600; padding: 6px 8px; text-align: center; white-space: nowrap; border: none; }
 thead tr:nth-child(2) th { top: 28px; z-index: 11; }
@@ -54,7 +54,7 @@ thead th.cat { background: #16213e; }
 .table-wrap::-webkit-scrollbar-track { background: #f0f0f5; }
 
 /* 底部常驻横向滚动条（表格在视口内、原生滚动条不可见时显示，与表格双向同步） */
-.sticky-scrollbar { position: fixed; left: 0; right: 0; bottom: 0; height: 14px; overflow-x: auto; overflow-y: hidden; z-index: 60; display: none; background: #eaeaef; border-top: 1px solid #c8c8d8; scrollbar-width: thin; scrollbar-color: #0f3460 #e8e8f0; }
+.sticky-scrollbar { position: fixed; left: 0; right: 0; bottom: 0; height: 16px; overflow-x: auto; overflow-y: hidden; z-index: 60; display: none; background: #eaeaef; border-top: 1px solid #c8c8d8; scrollbar-width: thin; scrollbar-color: #0f3460 #e8e8f0; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
 .sticky-scrollbar-inner { height: 1px; width: 0; }
 .sticky-scrollbar::-webkit-scrollbar { height: 12px; }
 .sticky-scrollbar::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 6px; }
@@ -203,6 +203,7 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
 
 <div class="table-wrap">
   <table id="mainTable">
+    <colgroup id="mainColGroup"></colgroup>
     <thead>
       <tr>
         <th class="sticky cat" rowspan="2">一级</th>
@@ -2010,7 +2011,12 @@ function fixStickyOffsets() {
   updStickyHead();
 }
 
+// 列宽测量缓存：仅在首次(auto布局)测量一次，之后复用，避免 fixed+colgroup 下二次测量错位
+var _colWidthsCache = null;
+var _colWidthsMobile = null;
+
 // 克隆主表头到 fixed 容器（用 colgroup 逐列声明宽度，table-layout:fixed 下 col 优先，避免 colspan 均分错位）
+// 同时把同一份 colWidths 应用到主表自身的 <colgroup>，使主表与克隆表头用完全相同、锁定不重排的列宽
 function syncStickyHead() {
   var thead = document.querySelector('#mainTable thead');
   var headBox = document.getElementById('stickyHead');
@@ -2020,14 +2026,36 @@ function syncStickyHead() {
   if (rows.length < 2) return;
   var src1 = rows[0].querySelectorAll('th');
   var src2 = rows[1].querySelectorAll('th');
-  // 全量列宽：前 5 个 rowspan sticky 列（第一行）+ 其余普通列（第二行）
-  var colWidths = [];
-  for (var i = 0; i < src1.length && src1[i].rowSpan > 1; i++) colWidths.push(src1[i].offsetWidth);
-  for (var j = 0; j < src2.length; j++) colWidths.push(src2[j].offsetWidth);
+  var isMobile = window.innerWidth <= 768;
+  // 固定列(前5个 rowspan 列)用已知确定宽度，避免测量受 colgroup/布局反馈影响而得到 0（曾导致 ETF代码列被压成0宽）
+  var stickyW = isMobile ? [42, 70, 130, 0, 76] : [56, 84, 240, 180, 90];
+  // 列宽只测量一次（首次在 auto 布局、无 colgroup 时量得准确值），之后缓存复用；
+  // 一旦套上 table-layout:fixed + colgroup 再测量数据列会错位，故绝不二次测量
+  var colWidths;
+  if (_colWidthsCache && _colWidthsMobile === isMobile) {
+    colWidths = _colWidthsCache;
+  } else {
+    colWidths = [];
+    var si = 0;
+    for (var i = 0; i < src1.length && src1[i].rowSpan > 1; i++) {
+      colWidths.push(stickyW[si] !== undefined ? stickyW[si] : Math.round(src1[i].offsetWidth));
+      si++;
+    }
+    for (var j = 0; j < src2.length; j++) colWidths.push(src2[j].offsetWidth);
+    _colWidthsCache = colWidths;
+    _colWidthsMobile = isMobile;
+  }
   var colsHtml = '';
-  for (var k = 0; k < colWidths.length; k++) colsHtml += '<col style="width:' + colWidths[k] + 'px">';
+  var total = 0;
+  for (var k = 0; k < colWidths.length; k++) { colsHtml += '<col style="width:' + colWidths[k] + 'px">'; total += colWidths[k]; }
+  // 主表与克隆表头共用同一份列宽，彻底锁定列宽、消除滑动错位
+  // 关键：先用自然(auto)布局量出合理列宽，再切到 table-layout:fixed 锁定，避免无 colgroup 时列被压成 0
+  var mainCG = document.getElementById('mainColGroup');
+  if (mainCG) mainCG.innerHTML = colsHtml;
+  var mt = document.getElementById('mainTable');
+  if (mt) { mt.style.tableLayout = 'fixed'; mt.style.width = total + 'px'; }
   stTable.innerHTML = '<colgroup>' + colsHtml + '</colgroup><thead>' + thead.innerHTML + '</thead>';
-  stTable.style.width = document.getElementById('mainTable').offsetWidth + 'px';
+  stTable.style.width = total + 'px';
 }
 
 // 固定表头显隐 + 横向滚动同步（--stk-sc 变量驱动四列反向补偿）
