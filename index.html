@@ -31,8 +31,8 @@ body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; ba
 .sort-select { padding: 8px 12px; border: 1px solid #d0d0e0; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; outline: none; }
 .result-count { font-size: 12px; color: #888; white-space: nowrap; }
 
-.table-wrap { margin: 0; overflow-x: auto; overflow-y: hidden; width: 100%; }
-table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: max-content; }
+.table-wrap { margin: 0; overflow-x: auto; overflow-y: hidden; width: 100%; -webkit-overflow-scrolling: touch; }
+table { border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; }
 thead th { position: sticky; top: 0; z-index: 10; background: #1a1a2e; color: #fff; font-weight: 600; padding: 6px 8px; text-align: center; white-space: nowrap; border: none; }
 thead tr:nth-child(2) th { top: 28px; z-index: 11; }
 thead th.group { background: #0f3460; }
@@ -204,6 +204,7 @@ tbody tr:hover td.sticky, tbody tr:hover td.sticky-2, tbody tr:hover td.sticky-3
 
 <div class="table-wrap">
   <table id="mainTable">
+    <colgroup id="mainColGroup"></colgroup>
     <thead>
       <tr>
         <th class="sticky cat" rowspan="2">一级</th>
@@ -2040,6 +2041,13 @@ function syncStickyHead() {
   for (var k = 0; k < colWidths.length; k++) colsHtml += '<col style="width:' + colWidths[k] + 'px">';
   stTable.innerHTML = '<colgroup>' + colsHtml + '</colgroup><thead>' + thead.innerHTML + '</thead>';
   stTable.style.width = document.getElementById('mainTable').offsetWidth + 'px';
+  // 主表同步 fixed 布局 colgroup，锁定列宽，消除横滚重排卡顿
+  var mg = document.getElementById('mainColGroup');
+  if (mg) {
+    var mcHtml = '';
+    for (var k = 0; k < colWidths.length; k++) mcHtml += '<col style="width:' + colWidths[k] + 'px">';
+    mg.innerHTML = mcHtml;
+  }
 }
 
 // 固定表头显隐 + 横向滚动同步（--stk-sc 变量驱动四列反向补偿）
